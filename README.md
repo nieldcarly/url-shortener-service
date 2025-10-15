@@ -118,6 +118,38 @@ Ensure your email links point to `${BASE_URL}/r/:shortId`.
 - `originalUrl` is unique, so the same input URL always maps to the same shortId.
 - Rate limiting and basic auth are recommended if exposing publicly.
 
+## Scaling overview: 100k vs 100m requests/day
+Assumptions: Most traffic hits `GET /r/:id` (redirect). `POST /shorten` is heavier but infrequent.
+
+- ~100k/day (≈1.2 RPS avg; occasional bursts)
+	- OK on a single small instance.
+	- In-memory redirect cache is sufficient.
+	- SQLite works; consider Postgres if you expect spikes or multiple instances.
+	- Add simple rate limiting to `/shorten`.
+
+- ~100m/day (≈1,160 RPS avg; bursty)
+	- Introduce Redis read-through cache for redirects (shortId → originalUrl) with negative caching for 404s.
+	- Move DB to managed Postgres + pgBouncer; keep `shortId` and `originalUrl` unique (already in schema).
+	- Horizontal scale stateless API instances behind a load balancer.
+	- Optional: return 301 and set Cache-Control to enable CDN caching of the redirect (only if mappings never change).
+	- Make analytics async (queue/stream) or use Redis counters; don’t write per-click synchronously.
+	- Observability: track p95/p99 latency, cache hit rate, DB latency; use HPA or autoscaling.
+
+### TLDR: Future implementations to handle 100m requests/day
+- Replace in-memory cache with Redis cache in front of DB for redirect lookups (read-through + negative caching).
+- Postgres + pgBouncer. Keep ORM/queries lean on miss path.
+- Multiple API instances + autoscale.
+- Async analytics pipeline.
+- Optional CDN caching for 301 redirects.
+
+## Metrics & analytics (optional)
+For production use, storing a small set of additional metrics can help with monitoring, debugging, and reporting. Here are potentially useful fields and patterns:
+
+- urlObservationCount (Int) — increment on each observation of an originalUrl; use `prisma.url.update({ data: { urlObservationCount: { increment: 1 } } })`.
+- clickCount (Int) — increment on each redirect; use `prisma.url.update({ data: { clickCount: { increment: 1 } } })`.
+- lastAccessed (DateTime) — set on redirect to know when it was last used.
+- disabled (Boolean) — allow deactivation without deleting.
+
 ## Dependencies (server)
 - morgan — HTTP request logger middleware (logs each request like `POST /shorten 200 15ms`).
 - multer — Multipart/form-data parser for file uploads; used to accept `.html` files at `/shorten`.
