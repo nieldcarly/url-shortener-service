@@ -106,7 +106,3 @@ Ensure your email links point to `${BASE_URL}/r/:shortId`.
 - Add caching for redirects (e.g., LRU or Redis) if hot.
 - Consider deduplicating by `originalUrl` to reuse the same `shortId` (implemented in code).
 - Add rate limiting and basic auth if exposing publicly.
-
-## License
-MIT
-
