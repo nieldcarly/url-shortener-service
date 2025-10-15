@@ -1,0 +1,13 @@
+node_modules/
+.dist/
+.build/
+.DS_Store
+.env
+.env.*
+apps/**/node_modules/
+apps/**/dist/
+**/.turbo/
+**/.vercel/
+**/.render/
+**/dev.db
+**/dev.db-journal
