@@ -4,8 +4,6 @@ node_modules/
 .DS_Store
 .env
 .env.*
-apps/**/node_modules/
-apps/**/dist/
 **/.turbo/
 **/.vercel/
 **/.render/
